@@ -28,3 +28,8 @@ This project implements a smart plant monitoring system using Arduino Uno microc
 
  # Circuit Diagram
  ![circuit ](https://github.com/nirmitirane24/Smart-Plant-Monitoring-System/assets/139235284/8578ab3d-f15d-45b5-b973-cdae665c183a)
+
+ # Model
+ ![WhatsApp Image 2024-04-30 at 11 31 43 AM](https://github.com/nirmitirane24/Smart-Plant-Monitoring-System/assets/139235284/399e9145-148c-4f66-8ba6-30f2f420c406)
+
+
