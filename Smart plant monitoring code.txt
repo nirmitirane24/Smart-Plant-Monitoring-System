@@ -1,0 +1,231 @@
+#include <Adafruit_Sensor.h>
+#include <DHT.h>
+#include <DHT_U.h>
+#include <Wire.h>
+#include <LiquidCrystal_I2C.h>
+
+// Define soil moisture sensor pin
+const int soil_moisture_pin = A1;
+
+// Define DHT sensor type and pin
+#define DHTPIN 2
+#define DHTTYPE DHT11
+DHT_Unified dht(DHTPIN, DHTTYPE);
+
+// Define color sensor pins
+#define S0_PIN 5
+#define S1_PIN 4
+#define S2_PIN 7
+#define S3_PIN 6
+#define OUT_PIN  8
+
+// Initialize LCD object
+LiquidCrystal_I2C lcd(0x27, 16, 2); // Set the LCD address to 0x27 for a 16 chars and 2 line display
+
+void setup() {
+  Serial.begin(9600);
+  dht.begin();
+  pinMode(soil_moisture_pin, INPUT);
+  pinMode(S0_PIN, OUTPUT);
+  pinMode(S1_PIN, OUTPUT);
+  pinMode(S2_PIN, OUTPUT);
+  pinMode(S3_PIN, OUTPUT);
+
+  //Set OUT_PIN as Input
+  pinMode(OUT_PIN, INPUT);
+  // Set Pulse Width scaling to 20%
+  digitalWrite(S0_PIN, HIGH);
+  digitalWrite(S1_PIN, LOW);
+  // Enabl UART for Debugging
+  Serial.begin(9600);
+
+  // Initialize LCD
+  lcd.init();
+  lcd.backlight();
+}
+
+void loop() {
+  // Read soil moisture
+  float moisture_percentage;
+  int soil_moisture_analog = analogRead(soil_moisture_pin);
+  moisture_percentage = map(soil_moisture_analog, 1023, 0, 0, 100);
+  displayOnLCD("Soil Moisture", moisture_percentage);
+  Serial.print("Soil Moisture Percentage = ");
+  Serial.print(moisture_percentage);
+  Serial.println("%");
+  delay(1000);
+
+  // Read humidity and temperature
+  sensors_event_t event;
+  dht.temperature().getEvent(&event);
+  float temperature = event.temperature;
+  displayOnLCD("Temperature", temperature);
+  Serial.print("Temperature:");
+  Serial.print(temperature);
+  Serial.println("°C");
+  delay(1000);
+
+  dht.humidity().getEvent(&event);
+  float humidity = event.relative_humidity;
+  displayOnLCD("Humidity", humidity);
+  Serial.print("Humidity:");
+  Serial.print(humidity);
+  Serial.println("%");
+  delay(1000);
+
+// Read color
+int r, g, b;
+r = process_red_value();
+delay(200);
+displayOnLCD("Red Value", r);
+Serial.print("Red Value:");
+Serial.println(r);
+delay(1000);
+
+g = process_green_value();
+delay(200);
+displayOnLCD("Green Value", g);
+Serial.print("Green Value:");
+Serial.println(g);
+delay(1000);
+
+b = process_blue_value();
+delay(200);
+displayOnLCD("Blue Value", b);
+Serial.print("Blue Value:");
+Serial.println(b);
+delay(1000);
+
+  // Check plant health based on the specified ranges
+  if (moisture_percentage < 40) {
+    displayOnLCD("Soil Moisture", "Dry - Water the plant");
+    Serial.println("Soil Moisture: Dry - Water the plant");
+  } else if (moisture_percentage >= 40 && moisture_percentage <= 70) {
+    displayOnLCD("Soil Moisture", "Adequate");
+    Serial.println("Soil Moisture: Adequate");
+  } else {
+    displayOnLCD("Soil Moisture", "Wet - Reduce watering");
+    Serial.println("Soil Moisture: Wet - Reduce watering");
+  }
+  delay(1000);
+
+  if (temperature < 18) {
+    displayOnLCD("Temperature", "Too cold for optimal growth");
+    Serial.println("Temperature: Too cold for optimal growth");
+  } else if (temperature >= 18 && temperature <= 24) {
+    displayOnLCD("Temperature", "Optimal for growth");
+    Serial.println("Temperature: Optimal for growth");
+  } else {
+    displayOnLCD("Temperature", "Too hot for optimal growth");
+    Serial.println("Temperature: Too hot for optimal growth");
+  }
+  delay(1000);
+
+  if (humidity < 40) {
+    displayOnLCD("Humidity", "Low - Increase humidity");
+    Serial.println("Humidity: Low - Increase humidity");
+  } else if (humidity >= 40 && humidity <= 60) {
+    displayOnLCD("Humidity", "Optimal for growth");
+    Serial.println("Humidity: Optimal for growth");
+  } else {
+    displayOnLCD("Humidity", "High - Ensure proper ventilation");
+    Serial.println("Humidity: High - Ensure proper ventilation");
+  }
+  delay(1000);
+  String displayMessage;
+  String serialMessage;
+
+// Check color ranges for healthy conditions
+if (r >= 0 && r <= 20 && g >= 30 && g <= 50 && b >= 0 && b <= 20) {
+    displayMessage = "Healthy Green";
+    serialMessage = "Color: Healthy Green";
+} else if (r >= 0 && r <= 25 && g >= 20 && g <= 40 && b >= 0 && b <= 25) {
+    displayMessage = "Pale Green (Early Growth)";
+    serialMessage = "Color: Pale Green (Early Growth)";
+} else if (r >= 0 && r <= 30 && g >= 15 && g <= 45 && b >= 0 && b <= 30) {
+    displayMessage = "Yellowish-Green (Young Leaves)";
+    serialMessage = "Color: Yellowish-Green (Young Leaves)";
+} else if (r >= 0 && r <= 35 && g >= 10 && g <= 50 && b >= 0 && b <= 35) {
+    displayMessage = "Yellow-Green (Normal Variants)";
+    serialMessage = "Color: Yellow-Green (Normal Variants)";
+} else if (r >= 0 && r <= 40 && g >= 5 && g <= 50 && b >= 0 && b <= 40) {
+    displayMessage = "Yellow (Early Stress Indication)";
+    serialMessage = "Color: Yellow (Early Stress Indication)";
+} else if (r >= 0 && r <= 45 && g >= 0 && g <= 50 && b >= 0 && b <= 45) {
+    displayMessage = "Brownish-Yellow (Moderate Stress)";
+    serialMessage = "Color: Brownish-Yellow (Moderate Stress)";
+} else if (r >= 0 && r <= 47 && g >= 0 && g <= 50 && b >= 0 && b <= 47) {
+    displayMessage = "Orange (Advanced Stress)";
+    serialMessage = "Color: Orange (Advanced Stress)";
+} else if (r >= 0 && r <= 49 && g >= 0 && g <= 50 && b >= 0 && b <= 49) {
+    displayMessage = "Red (Severe Stress or Damage)";
+    serialMessage = "Color: Red (Severe Stress or Damage)";
+} else if (r >= 0 && r <= 45 && g >= 0 && g <= 40 && b >= 0 && b <= 40) {
+    displayMessage = "Brown (Dead or Severely Damaged)";
+    serialMessage = "Color: Brown (Dead or Severely Damaged)";
+} else {
+    displayMessage = "Unknown - Further Analysis Needed";
+    serialMessage = "Color: Unknown - Further Analysis Needed";
+}
+
+  // Use LCD display at the end of the loop
+  displayOnLCD("Color", displayMessage.c_str());
+  Serial.println(serialMessage);
+  delay(1000);
+  
+}
+
+void displayOnLCD(const char* label, float value) {
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print(label);
+  lcd.print(": ");
+  
+  char valueStr[17]; // Buffer to hold the string representation of the float value
+  dtostrf(value, 6, 2, valueStr); // Convert float to string with 2 decimal places
+  
+  lcd.setCursor(0, 1); // Set cursor to the next line
+  lcd.print(valueStr);
+}
+
+void displayOnLCD(const char* label, const char* value) {
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print(label);
+  lcd.print(": ");
+
+  int len = strlen(value);
+  if (len <= 16) {
+    lcd.setCursor(0, 1);
+    lcd.print(value);
+  } else {
+    for (int i = 0; i < 20; ++i) {
+      lcd.setCursor(0, 1);
+      for (int j = 0; j < 16; ++j) {
+        lcd.print(value[(i + j) % len]);
+      }
+      delay(300); // Adjust scrolling speed here (milliseconds)
+    }
+  }
+}
+
+int process_red_value() {
+  digitalWrite(S2_PIN, LOW);
+  digitalWrite(S3_PIN, LOW);
+  int pulse_length = pulseIn(OUT_PIN, LOW);
+  return pulse_length;
+}
+
+int process_green_value() {
+  digitalWrite(S2_PIN, HIGH);
+  digitalWrite(S3_PIN, HIGH);
+  int pulse_length = pulseIn(OUT_PIN, LOW);
+  return pulse_length;
+}
+
+int process_blue_value() {
+  digitalWrite(S2_PIN, LOW);
+  digitalWrite(S3_PIN, HIGH);
+  int pulse_length = pulseIn(OUT_PIN, LOW);
+  return pulse_length;
+}
